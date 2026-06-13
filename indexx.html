@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Akıllı Kasa Güvenlik Paneli</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:20px;
+}
+
+h1{
+
+    text-align:center;
+}
+
+.cards{
+    display:flex;
+    gap:20px;
+    flex-wrap:wrap;
+    margin-bottom:30px;
+}
+
+.card{
+    flex:1;
+    min-width:220px;
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+    text-align:center;
+}
+
+.card h2{
+    margin:0;
+    font-size:30px;
+}
+
+.card p{
+    margin-top:10px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+th{
+    background:#1f2937;
+    color:white;
+}
+
+th,td{
+    padding:12px;
+    border:1px solid #ddd;
+    text-align:center;
+}
+td{
+    font-size:14px;
+}
+
+th{
+    font-size:15px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🔐 Akıllı Kasa Güvenlik Paneli</h1>
+
+<div id="saat" style="
+text-align:center;
+font-size:22px;
+font-weight:bold;
+margin-bottom:20px;
+color:#1f2937;">
+</div>
+<div style="
+background:white;
+padding:20px;
+border-radius:12px;
+margin-bottom:20px;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+">
+
+<h2>📢 Son Olay</h2>
+
+<p id="sonOlay">Bekleniyor...</p>
+
+</div>
+
+<div class="cards">
+
+<div class="card" style="background:#2563eb;color:white;">
+<h2 id="toplam">0</h2>
+<p>Toplam Olay</p>
+</div>
+
+<div class="card" style="background:#16a34a;color:white;">
+<h2 id="basarili">0</h2>
+<p>Başarılı Giriş</p>
+</div>
+
+<div class="card" style="background:#dc2626;color:white;">
+<h2 id="hatali">0</h2>
+<p>Başarısız Deneme</p>
+</div>
+
+<div class="card" style="background:#ea580c;color:white;">
+<h2 id="kilitli">0</h2>
+<p>Sistem Kilitlendi</p>
+</div>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>Tarih</th>
+<th>Olay</th>
+<th>Kullanıcı</th>
+</tr>
+</thead>
+
+<tbody id="tablo">
+</tbody>
+
+</table>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+import {
+getDatabase,
+ref,
+onValue
+}
+from "https://www.gstatic.com/******";
+
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  databaseURL: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "...",
+  measurementId: "..."
+};
+
+const app = initializeApp(firebaseConfig);
+
+const database = getDatabase(app);
+
+const olayRef = ref(database,"olaylar");
+
+onValue(olayRef,(snapshot)=>{
+
+let veri = snapshot.val();
+
+let tablo = document.getElementById("tablo");
+
+tablo.innerHTML = "";
+
+let toplam=0;
+let basarili=0;
+let hatali=0;
+let kilitli=0;
+let sonKayit = null;
+
+let keys = Object.keys(veri).reverse();
+
+for(let key of keys){
+
+sonKayit = veri[key];
+toplam++;
+
+let olay = veri[key].olay || "-";
+let kullanici = veri[key].kullanici || "-";
+let zaman = veri[key].zaman || "-";
+if(zaman !== "-"){
+    zaman = new Date(zaman).toLocaleString("tr-TR");
+}
+
+if(olay==="GIRIS_BASARILI")
+basarili++;
+
+if(
+olay.includes("HATALI") ||
+olay==="SIFRE_YANLIS"
+)
+hatali++;
+
+if(
+olay==="SISTEM_KILITLENDI"
+)
+kilitli++;
+
+let renk = "#6b7280";
+
+if(
+olay === "GIRIS_BASARILI" ||
+olay === "PARMAK_BASARILI" ||
+olay === "YUZ_BASARILI"
+){
+    renk = "#16a34a";
+}
+
+else if(
+olay.includes("HATALI") ||
+olay === "SIFRE_YANLIS"
+){
+    renk = "#dc2626";
+}
+
+else if(
+olay === "KASA_KAPANDI"
+){
+    renk = "#ea580c";
+}
+
+else if(
+olay === "SISTEM_KILITLENDI"
+){
+    renk = "#111827";
+}
+
+tablo.innerHTML += `
+<tr>
+<td>${zaman}</td>
+
+<td>
+<span style="
+background:${renk};
+color:white;
+padding:6px 12px;
+border-radius:20px;
+font-weight:bold;
+">
+${olay}
+</span>
+</td>
+
+<td>${kullanici}</td>
+
+</tr>
+`;
+}
+
+document.getElementById("toplam").innerText=toplam;
+document.getElementById("basarili").innerText=basarili;
+document.getElementById("hatali").innerText=hatali;
+document.getElementById("kilitli").innerText=kilitli;
+if(sonKayit){
+
+let sonTarih = "-";
+
+if(sonKayit.zaman){
+    sonTarih = new Date(sonKayit.zaman)
+    .toLocaleString("tr-TR");
+}
+
+document.getElementById("sonOlay").innerHTML =
+"<b>" + sonKayit.olay + "</b><br>" +
+sonTarih;
+
+}
+
+});
+
+setInterval(()=>{
+
+document.getElementById("saat").innerHTML =
+"🕒 " + new Date().toLocaleString("tr-TR");
+
+},1000);
+
+</script>
+
+</body>
+</html>
